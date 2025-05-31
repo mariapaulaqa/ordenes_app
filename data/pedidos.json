@@ -1,0 +1,40 @@
+[
+    {
+        "nombre_cliente": "Wanda Torres",
+        "fecha_pedido": "29/05/2025",
+        "fecha_entrega": "20/06/2025",
+        "ciudad_entrega": "Valledupar",
+        "articulos": [
+            "Sofá Serena",
+            "Silla Serena",
+            "Mesa de centro Olga"
+        ],
+        "cantidades": [
+            "1",
+            "2",
+            "1"
+        ],
+        "dias_fabricacion": 22,
+        "dias_transcurridos": 1,
+        "debe_estar": "Estructura",
+        "pares_articulos": [
+            [
+                "Sofá Serena",
+                "1"
+            ],
+            [
+                "Silla Serena",
+                "2"
+            ],
+            [
+                "Mesa de centro Olga",
+                "1"
+            ]
+        ],
+        "estados_actuales": [
+            "Estructura",
+            "Estructura",
+            "Estructura"
+        ]
+    }
+]

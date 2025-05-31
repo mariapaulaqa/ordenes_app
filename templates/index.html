@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <title>Gestor de Pedidos PDF</title>
+    <style>
+        table, th, td {
+            border: 1px solid black; border-collapse: collapse; padding: 8px;
+        }
+        th {
+            background-color: #ddd;
+        }
+        select {
+            width: 120px;
+        }
+        .atrasado {
+            background-color: red;
+            color: white;
+        }
+        .atiempo {
+            background-color: blue;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <h1>Sube tu PDF</h1>
+    <form method="POST" enctype="multipart/form-data">
+        <input type="file" name="archivo" accept="application/pdf" required>
+        <button type="submit">Procesar</button>
+    </form>
+
+    {% if pedidos %}
+    <h2>Pedidos cargados</h2>
+    <form method="POST">
+        <input type="hidden" name="accion" value="guardar_cambios">
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Cliente</th>
+                    <th>Fecha Pedido</th>
+                    <th>Fecha Entrega</th>
+                    <th>Ciudad Entrega</th>
+                    <th>Días Fabricación</th>
+                    <th>Días Transcurridos</th>
+                    <th>Debe Estar En</th>
+                    <th>Producto</th>
+                    <th>Cantidad</th>
+                    <th>Actualmente En</th>
+                    <th>Reporte</th>
+                    <th>Eliminar</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% set etapas = ['Estructura', 'Pintura', 'Tejido', 'Embalaje'] %}
+                {% set valores_etapas = {'Estructura': 1, 'Pintura': 2, 'Tejido': 3, 'Embalaje': 4} %}
+
+                {% for pedido in pedidos %}
+                    {% set i = loop.index0 %}
+                    {% for articulo_cant in pedido.pares_articulos %}
+                        {% set j = loop.index0 %}
+                        {% set articulo = articulo_cant[0] %}
+                        {% set cantidad = articulo_cant[1] %}
+                        {% set actual = pedido.estados_actuales[j] %}
+                        {% set actual_val = valores_etapas.get(actual, 0) %}
+                        {% set debe_val = valores_etapas.get(pedido.debe_estar, 0) %}
+
+                        {% if actual_val < debe_val %}
+                            {% set reporte = 'ATRASADO' %}
+                            {% set clase_reporte = 'atrasado' %}
+                        {% elif actual == 'Embalaje' %}
+                            {% set reporte = 'LISTO PARA ENVIAR' %}
+                            {% set clase_reporte = 'atiempo' %}
+                        {% else %}
+                            {% set reporte = 'A TIEMPO' %}
+                            {% set clase_reporte = 'atiempo' %}
+                        {% endif %}
+
+                        <tr>
+                            {% if j == 0 %}
+                                <td rowspan="{{ pedido.pares_articulos|length }}">{{ pedido.nombre_cliente }}</td>
+                                <td rowspan="{{ pedido.pares_articulos|length }}">{{ pedido.fecha_pedido }}</td>
+                                <td rowspan="{{ pedido.pares_articulos|length }}">{{ pedido.fecha_entrega }}</td>
+                                <td rowspan="{{ pedido.pares_articulos|length }}">{{ pedido.ciudad_entrega }}</td>
+                                <td rowspan="{{ pedido.pares_articulos|length }}">{{ pedido.dias_fabricacion }}</td>
+                                <td rowspan="{{ pedido.pares_articulos|length }}">{{ pedido.dias_transcurridos }}</td>
+                                <td rowspan="{{ pedido.pares_articulos|length }}">{{ pedido.debe_estar }}</td>
+                            {% endif %}
+
+
+                            <td>{{ articulo }}</td>
+                            <td>{{ cantidad }}</td>
+                            <td>
+                                <select name="estado_{{i}}_{{j}}" class="actualmente-en">
+                                    {% for etapa in etapas %}
+                                        <option value="{{ etapa }}" {% if etapa == actual %}selected{% endif %}>{{ etapa }}</option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+                            <td class="reporte-cell {{ clase_reporte }}">{{ reporte }}</td>
+
+                            {% if j == pedido.pares_articulos|length - 1 %}
+                                <td>
+                                    <form action="{{ url_for('eliminar', indice=i) }}" method="post" onsubmit="return confirm('¿Estás seguro de que deseas eliminar este pedido?');" data-indice="{{ i }}">
+                                        <button type="submit" class="btn-eliminar">Eliminar</button>
+                                    </form>
+                                </td>
+                            {% else %}
+                                <td></td>
+                            {% endif %}
+                            
+                        </tr>
+                    {% endfor %}
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <button type="submit">Guardar cambios</button>
+    </form>
+    {% endif %}
+
+    <script>
+        const valoresEtapas = {
+            "Estructura": 1,
+            "Pintura": 2,
+            "Tejido": 3,
+            "Embalaje": 4
+        };
+
+        function calcularReporte(actual, debe) {
+            const actualVal = valoresEtapas[actual] || 0;
+            const debeVal = valoresEtapas[debe] || 0;
+            if (actualVal < debeVal) {
+                return "ATRASADO";
+            } else if (actual === "Embalaje") {
+                return "LISTO PARA ENVIAR";
+            } else {
+                return "A TIEMPO";
+            }
+        }
+
+        const selects = document.querySelectorAll(".actualmente-en");
+        selects.forEach((select) => {
+            select.addEventListener("change", function() {
+                const reporteCell = this.closest("tr").querySelector(".reporte-cell");
+
+                // Buscamos "Debe Estar En" en la fila con rowspan
+                let fila = this.closest("tr");
+                let tabla = fila.closest("table");
+                let idxFila = fila.rowIndex;
+                let debeEstar = '';
+                for(let i = idxFila; i >= 0; i--) {
+                    let celda = tabla.rows[i].cells[6]; // columna "Debe Estar En"
+                    if(celda) {
+                        debeEstar = celda.textContent.trim();
+                        if(debeEstar) break;
+                    }
+                }
+
+                const nuevoReporte = calcularReporte(this.value, debeEstar);
+
+                reporteCell.textContent = nuevoReporte;
+
+                reporteCell.classList.remove("atrasado", "atiempo");
+
+                if (nuevoReporte === "ATRASADO") {
+                    reporteCell.classList.add("atrasado");
+                } else {
+                    reporteCell.classList.add("atiempo");
+                }
+            });
+        });
+    </script>
+</body>
+</html>
