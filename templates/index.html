@@ -7,31 +7,109 @@
         table, th, td {
             border: 1px solid black; border-collapse: collapse; padding: 8px;
         }
-        th {
-            background-color: #ddd;
+        thead th {
+            background-color: #003366; /* El color que prefieras */
+            color: white; /* Color del texto para que contraste */
+            font-weight: bold; /* Para que el texto sea negrita (opcional) */
         }
         select {
             width: 120px;
         }
         .atrasado {
-            background-color: red;
+            background-color: rgb(202, 0, 0);
             color: white;
         }
         .atiempo {
-            background-color: blue;
+            background-color: #003366;
             color: white;
         }
+        #btn-eliminar-primer-pedido {
+            display: none;
+        }
+
+        #form-eliminar-primer-pedido {
+        display: none !important;
+        }
+
+        table tr > :nth-child(5) {
+            display: none;
+        }
+
+
+        table, th, td {
+            border: 1px solid black; 
+            border-collapse: collapse; 
+            padding: 8px;
+            text-align: center; /* <- Centra el texto horizontalmente */
+            vertical-align: middle; /* Opcional: centra verticalmente */
+        }
+
+        table {
+            table-layout: auto; /* Ajusta ancho según contenido */
+            width: auto; /* No ocupa todo el ancho */
+        }
+       
+        /* Para columnas numéricas específicas (ejemplo: Días Transcurridos es columna 6) */
+        table td:nth-child(6),
+        table th:nth-child(6) {
+            white-space: nowrap;  /* Evita que el número se divida */
+            max-width: 95px;      /* Ajusta este valor según tu preferencia */
+            width: 95px;          /* Forzar ancho fijo */
+        }
+
+        .btn-guardar {
+            background-color: #003366; /* Azul oscuro */
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 20px; /* <- separa el botón de la tabla */
+        }
+
+        tr.pedido-final {
+            border-bottom: 4px solid #000000; /* línea azul oscuro gruesa */
+        }
+
+        
+        thead tr {
+            border-bottom: 3px solid black;
+        }
+
+
+
+
     </style>
 </head>
 <body>
-    <h1>Sube tu PDF</h1>
+    <h1>Sube el pedido</h1>
     <form method="POST" enctype="multipart/form-data">
         <input type="file" name="archivo" accept="application/pdf" required>
         <button type="submit">Procesar</button>
     </form>
 
     {% if pedidos %}
-    <h2>Pedidos cargados</h2>
+    <h2>PEDIDOS</h2>
+    <button id="btn-eliminar-primer-pedido">Eliminar primer pedido</button>
+
+    <script>
+    document.getElementById('btn-eliminar-primer-pedido').addEventListener('click', function() {
+        if (confirm('¿Estás seguro de que deseas eliminar este pedido?')) {
+            fetch('/eliminar_primer_pedido', { method: 'POST' })
+            .then(response => response.text())
+            .then(data => {
+                if (data === 'ok') {
+                    alert('Primer pedido eliminado');
+                    location.reload();  // Recarga la página para actualizar la lista
+                } else {
+                    alert('Error al eliminar el pedido');
+                }
+            });
+        }
+    });
+    </script>
+
     <form method="POST">
         <input type="hidden" name="accion" value="guardar_cambios">
 
@@ -39,11 +117,11 @@
             <thead>
                 <tr>
                     <th>Cliente</th>
-                    <th>Fecha Pedido</th>
+                    <th>Fecha Ingreso</th>
                     <th>Fecha Entrega</th>
                     <th>Ciudad Entrega</th>
                     <th>Días Fabricación</th>
-                    <th>Días Transcurridos</th>
+                    <th>Días<br>Transcurridos</th>
                     <th>Debe Estar En</th>
                     <th>Producto</th>
                     <th>Cantidad</th>
@@ -77,9 +155,16 @@
                             {% set clase_reporte = 'atiempo' %}
                         {% endif %}
 
-                        <tr>
+                        <tr {% if j == pedido.pares_articulos|length - 1 %}class="pedido-final"{% endif %}>
+
                             {% if j == 0 %}
-                                <td rowspan="{{ pedido.pares_articulos|length }}">{{ pedido.nombre_cliente }}</td>
+
+                                <td rowspan="{{ pedido.pares_articulos|length }}">
+                                <a href="{{ url_for('descargar_pdf', nombre_archivo=pedido.nombre_archivo) }}">
+                                    {{ pedido.nombre_cliente }}
+                                </a>
+                                </td>
+
                                 <td rowspan="{{ pedido.pares_articulos|length }}">{{ pedido.fecha_pedido }}</td>
                                 <td rowspan="{{ pedido.pares_articulos|length }}">{{ pedido.fecha_entrega }}</td>
                                 <td rowspan="{{ pedido.pares_articulos|length }}">{{ pedido.ciudad_entrega }}</td>
@@ -100,15 +185,27 @@
                             </td>
                             <td class="reporte-cell {{ clase_reporte }}">{{ reporte }}</td>
 
-                            {% if j == pedido.pares_articulos|length - 1 %}
-                                <td>
-                                    <form action="{{ url_for('eliminar', indice=i) }}" method="post" onsubmit="return confirm('¿Estás seguro de que deseas eliminar este pedido?');" data-indice="{{ i }}">
-                                        <button type="submit" class="btn-eliminar">Eliminar</button>
-                                    </form>
+                            
+                            {% if j == 0 %}
+                                <td rowspan="{{ pedido.pares_articulos|length }}">
+                                    {% if i == 0 %}
+                                        <!-- Botón especial visible para el primer pedido -->
+                                        <button type="button" id="btn-eliminar-primer-pedido-interno">Eliminar</button>
+
+                                        <!-- Formulario normal para el primer pedido, pero oculto -->
+                                        <form id="form-eliminar-primer-pedido" action="{{ url_for('eliminar', indice=i) }}" method="post" style="display: none;">
+                                            <button type="submit" class="btn-eliminar" style="display: none;">Eliminar</button>
+                                        </form>
+                                    {% else %}
+                                        <!-- Formulario normal visible para los demás pedidos -->
+                                        <form action="{{ url_for('eliminar', indice=i) }}" method="post" onsubmit="return confirm('¿Estás seguro de que deseas eliminar este pedido?');">
+                                            <button type="submit" class="btn-eliminar">Eliminar</button>
+                                        </form>
+                                    {% endif %}
                                 </td>
-                            {% else %}
-                                <td></td>
                             {% endif %}
+
+
                             
                         </tr>
                     {% endfor %}
@@ -116,8 +213,24 @@
             </tbody>
         </table>
 
-        <button type="submit">Guardar cambios</button>
+        <button type="submit" class="btn-guardar">Guardar cambios</button>
+
     </form>
+
+    <script>
+        // Al hacer click en el botón interno del primer pedido, dispara el click del botón externo
+        document.addEventListener('DOMContentLoaded', function() {
+            var btnInterno = document.getElementById('btn-eliminar-primer-pedido-interno');
+            var btnExterno = document.getElementById('btn-eliminar-primer-pedido');
+
+            if (btnInterno && btnExterno) {
+                btnInterno.addEventListener('click', function() {
+                    btnExterno.click();
+                });
+            }
+        });
+    </script>
+
     {% endif %}
 
     <script>

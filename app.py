@@ -3,10 +3,14 @@ import json
 from flask import Flask, render_template, request, redirect, url_for
 import pdfplumber
 from datetime import datetime, date
+from flask import send_file, abort
+from flask import send_from_directory, abort
 
 app = Flask(__name__)
 
 UPLOAD_FOLDER = 'uploads'
+UPLOAD_FOLDER = os.path.join(os.getcwd(), 'uploads')
+
 DATA_FILE = 'data/pedidos.json'
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -98,6 +102,7 @@ def index():
                 ruta = os.path.join(UPLOAD_FOLDER, archivo.filename)
                 archivo.save(ruta)
                 datos = extraer_datos_pdf(ruta)
+                datos["nombre_archivo"] = archivo.filename
 
                 # Calcular días transcurridos y etapa "Debe estar en"
                 dias_transcurridos = None
@@ -153,11 +158,29 @@ def index():
 @app.route('/eliminar/<int:indice>', methods=['POST'])
 def eliminar(indice):
     pedidos = cargar_pedidos()
+
+
     if 0 <= indice < len(pedidos):
         pedidos.pop(indice)
         guardar_pedidos(pedidos)
     return redirect(url_for('index'))
 
 
+@app.route('/eliminar_primer_pedido', methods=['POST'])
+def eliminar_primer_pedido():
+    pedidos = cargar_pedidos()  # Carga la lista de pedidos desde el archivo
+    if pedidos:
+        pedidos.pop(0)  # Borra el primer pedido (posición 0)
+        guardar_pedidos(pedidos)  # Guarda la lista actualizada
+    return 'ok'  # Devuelve un mensaje simple de que se borró
+
+
+@app.route('/descargar_pdf/<nombre_archivo>')
+def descargar_pdf(nombre_archivo):
+    return send_from_directory(UPLOAD_FOLDER, nombre_archivo, as_attachment=True)
+
+
 if __name__ == '__main__':
-    app.run(debug=True)
+    import os
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port, debug=True)
