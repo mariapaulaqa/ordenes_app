@@ -1,26 +1,113 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-    <title>Resultados</title>
-    <style>
-        table {
-            border-collapse: collapse;
-            width: 100%;
-        }
-        th, td {
-            padding: 8px;
-            border: 1px solid #ccc;
-        }
-        th {
-            background-color: #f5f5f5;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <title>Pedidos Listos</title>
+  <style>
+    table {
+      border-collapse: collapse;
+      width: auto%;
+    }
+    thead th {
+        background-color: #003366;
+        color: white;
+        font-weight: bold;
+    }
+   
+    th, td {
+      border: 1px solid #ccc;
+      padding: 4px 8px;
+      text-align: center;
+      white-space: nowrap;
+      vertical-align: top; /* para que texto quede arriba */
+    }
+    th {
+      background-color: #eee;
+    }
+    form {
+      margin: 0;
+    }
+    button {
+      padding: 4px 8px;
+    }
+  </style>
 </head>
 <body>
-    <h1>{{ titulo }}</h1>
-    {% for tabla in tablas %}
-        {{ tabla|safe }}
+
+<a href="{{ url_for('index') }}">
+    <button>Regresar a pedidos</button>
+</a>
+
+<h1>Envío de pedidos</h1>
+
+{% if pedidos %}
+<table>
+  <thead>
+    <tr>
+      <th>Cliente</th>
+      <th>Fecha Entrega</th>
+      <th>Ciudad</th>
+      <th>Producto</th>
+      <th>Cantidad</th>
+      <th>Comprobante Envío</th>  <!-- Quité "Ver Comprobante" -->
+      <th>Eliminar</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for pedido in pedidos %}
+      {% set idx = loop.index0 %}
+      {% for i in range(pedido.pares_articulos|length) %}
+        <tr>
+          {% if i == 0 %}
+            <td rowspan="{{ pedido.pares_articulos|length }}">{{ pedido.nombre_cliente }}</td>
+            <td rowspan="{{ pedido.pares_articulos|length }}">{{ pedido.fecha_entrega }}</td>
+            <td rowspan="{{ pedido.pares_articulos|length }}">{{ pedido.ciudad_entrega }}</td>
+          {% endif %}
+          
+          <td>{{ pedido.pares_articulos[i][0] }}</td>
+          <td>{{ pedido.pares_articulos[i][1] }}</td>
+
+          {% if i == 0 %}
+            <td rowspan="{{ pedido.pares_articulos|length }}" style="text-align: center;">
+              <form action="{{ url_for('subir_comprobante') }}" method="post" enctype="multipart/form-data">
+                <input type="file" name="comprobante" required>
+                <input type="hidden" name="nombre_pedido" value="{{ pedido.nombre_pedido_safe }}">
+                <button type="submit">Subir Comprobante</button>
+              </form>
+
+              <br>
+
+              {% if pedido.comprobante %}
+                <a href="{{ url_for('descargar_comprobante', nombre_archivo=pedido.comprobante) }}" target="_blank">Ver Comprobante</a>
+              {% else %}
+                <span style="color: gray; font-style: italic;">No disponible</span>
+              {% endif %}
+            </td>
+
+
+
+            <td rowspan="{{ pedido.pares_articulos|length }}">
+            <form action="{{ url_for('eliminar', indice=idx) }}" method="post" style="margin:0;">
+                <input type="hidden" name="next_url" value="{{ request.path }}">
+                <button type="submit" onclick="return confirm('¿Seguro quieres eliminar este pedido?')">Eliminar Pedido</button>
+            </form>
+            </td>
+
+
+
+
+
+
+
+          {% endif %}
+        </tr>
+      {% endfor %}
     {% endfor %}
-    <a href="/">← Volver a subir otro archivo</a>
+  </tbody>
+</table>
+{% else %}
+<p>No hay pedidos listos.</p>
+{% endif %}
+
 </body>
 </html>

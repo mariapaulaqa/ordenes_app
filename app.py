@@ -1,18 +1,18 @@
 import os 
 import json
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, flash
 import pdfplumber
 from datetime import datetime, date
-from flask import send_file, abort
-from flask import send_from_directory, abort
+from flask import send_file, abort, send_from_directory
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
+app.secret_key = "Marioka"
 
-UPLOAD_FOLDER = 'uploads'
 UPLOAD_FOLDER = os.path.join(os.getcwd(), 'uploads')
-
 DATA_FILE = 'data/pedidos.json'
 
+os.makedirs('comprobantes', exist_ok=True)
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs('data', exist_ok=True)
 
@@ -104,6 +104,9 @@ def index():
                 datos = extraer_datos_pdf(ruta)
                 datos["nombre_archivo"] = archivo.filename
 
+                # Generar nombre_pedido_safe para identificar unívocamente el pedido
+                datos["nombre_pedido_safe"] = (datos["nombre_cliente"] + "_" + datos["fecha_entrega"]).replace("/", "-").replace(" ", "_")
+
                 # Calcular días transcurridos y etapa "Debe estar en"
                 dias_transcurridos = None
                 debe_estar = None
@@ -155,24 +158,64 @@ def index():
     return render_template('index.html', pedidos=pedidos)
 
 
+@app.route('/pedidos_listos')
+def pedidos_listos():
+    pedidos = cargar_pedidos()
+    pedidos_listos = []
+
+    # Filtramos los pedidos que están listos (todos sus estados en 'Embalaje')
+    for pedido in pedidos:
+        if all(estado == "Embalaje" for estado in pedido.get("estados_actuales", [])):
+            pedidos_listos.append(pedido)
+
+    # Intentamos listar los archivos de la carpeta 'comprobantes'
+    try:
+        archivos_comprobantes = os.listdir('comprobantes')
+    except FileNotFoundError:
+        archivos_comprobantes = []
+
+    # Asignamos el archivo comprobante a cada pedido listo (si existe)
+    for pedido in pedidos_listos:
+        nombre_pedido_safe = pedido.get("nombre_pedido_safe")
+        if nombre_pedido_safe:
+            nombre_archivo_esperado = f"{nombre_pedido_safe}.pdf"
+            if nombre_archivo_esperado in archivos_comprobantes:
+                pedido["comprobante"] = nombre_archivo_esperado
+            else:
+                pedido["comprobante"] = None
+        else:
+            pedido["comprobante"] = None
+
+    # Renderizamos la plantilla con los pedidos listos
+    return render_template(
+        'listos.html',
+        pedidos=pedidos_listos,
+        archivos_comprobantes=archivos_comprobantes
+    )
+
+
+
 @app.route('/eliminar/<int:indice>', methods=['POST'])
 def eliminar(indice):
     pedidos = cargar_pedidos()
-
-
     if 0 <= indice < len(pedidos):
         pedidos.pop(indice)
         guardar_pedidos(pedidos)
-    return redirect(url_for('index'))
+        # Leer el valor enviado por el formulario
+    next_url = request.form.get('next')
+    if next_url:
+        return redirect(next_url)
+    else:
+        return redirect(url_for('index'))
 
 
 @app.route('/eliminar_primer_pedido', methods=['POST'])
 def eliminar_primer_pedido():
-    pedidos = cargar_pedidos()  # Carga la lista de pedidos desde el archivo
+    pedidos = cargar_pedidos()
     if pedidos:
-        pedidos.pop(0)  # Borra el primer pedido (posición 0)
-        guardar_pedidos(pedidos)  # Guarda la lista actualizada
-    return 'ok'  # Devuelve un mensaje simple de que se borró
+        pedidos.pop(0)
+        guardar_pedidos(pedidos)
+    return 'ok'
 
 
 @app.route('/descargar_pdf/<nombre_archivo>')
@@ -180,7 +223,42 @@ def descargar_pdf(nombre_archivo):
     return send_from_directory(UPLOAD_FOLDER, nombre_archivo, as_attachment=True)
 
 
+@app.route('/subir_comprobante', methods=['POST'])
+def subir_comprobante():
+    archivo = request.files.get('comprobante')               # Obtenemos el archivo subido
+    nombre_pedido = request.form.get('nombre_pedido')        # Obtenemos el nombre del pedido desde el formulario
+    
+
+    if archivo and archivo.filename:
+        # Normalizamos el nombre para que sea seguro como nombre de archivo
+        nombre_limpio = nombre_pedido.replace("/", "-").replace(" ", "_")
+        
+        # Forzamos que la extensión sea .pdf (asumiendo que solo se permiten PDFs)
+        nombre_archivo_guardar = f"{nombre_limpio}.pdf"
+    
+        # Ruta donde se guardará el comprobante
+        ruta_guardado = os.path.join('comprobantes', nombre_archivo_guardar)
+        archivo.save(ruta_guardado)
+        
+        # Actualizamos el pedido correspondiente
+        pedidos = cargar_pedidos()
+        for pedido in pedidos:
+            if pedido.get("nombre_pedido_safe") == nombre_limpio:
+                pedido["comprobante"] = nombre_archivo_guardar
+                break
+
+        guardar_pedidos(pedidos)
+
+    return redirect(url_for('pedidos_listos'))
+
+
+@app.route('/descargar_comprobante/<nombre_archivo>')
+def descargar_comprobante(nombre_archivo):
+    ruta = os.path.join('comprobantes', nombre_archivo)
+    if os.path.exists(ruta):
+        return send_file(ruta, as_attachment=True)
+    else:
+        abort(404)
+
 if __name__ == '__main__':
-    import os
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=True)
+    app.run(debug=True)

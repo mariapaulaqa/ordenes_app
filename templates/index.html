@@ -16,30 +16,24 @@
             width: 120px;
         }
         .atrasado {
-            background-color: rgb(202, 0, 0);
-            color: white;
+            background-color: rgb(219, 0, 0);
+            color: rgb(255, 255, 255);
         }
         .atiempo {
-            background-color: #003366;
-            color: white;
+            background-color: #b8dcff;
+            color: rgb(0, 5, 95);
         }
         #btn-eliminar-primer-pedido {
             display: none;
         }
         
 
+
         #form-eliminar-primer-pedido {
         display: none !important;
         }
 
-        table tr > :nth-child(5) {
-            display: none;
-        }
 
-
-        table tr > :nth-child(6) {
-            display: none;
-        }
 
 
 
@@ -101,6 +95,11 @@
     <h2>PEDIDOS</h2>
     <button id="btn-eliminar-primer-pedido">Eliminar primer pedido</button>
 
+    <div style="margin-bottom: 20px;">
+    <a href="{{ url_for('pedidos_listos') }}">Ver pedidos listos para enviar</a>
+    </div>
+
+
     <script>
     document.getElementById('btn-eliminar-primer-pedido').addEventListener('click', function() {
         if (confirm('¿Estás seguro de que deseas eliminar este pedido?')) {
@@ -127,9 +126,7 @@
                     <th>Cliente</th>
                     <th>Fecha Ingreso</th>
                     <th>Fecha Entrega</th>
-                    <th>Ciudad</th>
-                    <th>Días Fabricación</th>
-                    <th>Días<br>Transcurridos</th>
+
                     <th>Debe Estar En</th>
                     <th>Producto</th>
                     <th>Cantidad</th>
@@ -170,14 +167,15 @@
                                 <td rowspan="{{ pedido.pares_articulos|length }}">
                                 <a href="{{ url_for('descargar_pdf', nombre_archivo=pedido.nombre_archivo) }}">
                                     {{ pedido.nombre_cliente }}
-                                </a>
+                                </a><br>
+                                    <small style="font-weight: normal; color: rgb(0, 0, 0);">{{ pedido.ciudad_entrega }}</small>
+                    
                                 </td>
 
                                 <td rowspan="{{ pedido.pares_articulos|length }}">{{ pedido.fecha_pedido }}</td>
                                 <td rowspan="{{ pedido.pares_articulos|length }}">{{ pedido.fecha_entrega }}</td>
-                                <td rowspan="{{ pedido.pares_articulos|length }}">{{ pedido.ciudad_entrega }}</td>
-                                <td rowspan="{{ pedido.pares_articulos|length }}">{{ pedido.dias_fabricacion }}</td>
-                                <td rowspan="{{ pedido.pares_articulos|length }}">{{ pedido.dias_transcurridos }}</td>
+                                
+
                                 <td rowspan="{{ pedido.pares_articulos|length }}">{{ pedido.debe_estar }}</td>
                             {% endif %}
 
