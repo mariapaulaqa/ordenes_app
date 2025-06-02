@@ -30,7 +30,13 @@
 
 
         #form-eliminar-primer-pedido {
-        display: none !important;
+            display: none !important;
+        }
+
+        .listo-envio {
+            background-color: rgb(0, 36, 217);
+            color: white;
+            font-weight: bold;
         }
 
 
@@ -153,8 +159,8 @@
                             {% set reporte = 'ATRASADO' %}
                             {% set clase_reporte = 'atrasado' %}
                         {% elif actual == 'Embalaje' %}
-                            {% set reporte = 'LISTO PARA ENVIAR' %}
-                            {% set clase_reporte = 'atiempo' %}
+                            {% set reporte = 'EN BODEGA DE ENVÍO' %}
+                            {% set clase_reporte = 'listo-envio' %}
                         {% else %}
                             {% set reporte = 'A TIEMPO' %}
                             {% set clase_reporte = 'atiempo' %}
@@ -253,7 +259,7 @@
             if (actualVal < debeVal) {
                 return "ATRASADO";
             } else if (actual === "Embalaje") {
-                return "LISTO PARA ENVIAR";
+                return "EN BODEGA DE ENVÍO";
             } else {
                 return "A TIEMPO";
             }
@@ -281,10 +287,12 @@
 
                 reporteCell.textContent = nuevoReporte;
 
-                reporteCell.classList.remove("atrasado", "atiempo");
+                reporteCell.classList.remove("atrasado", "atiempo", "listo-envio");
 
                 if (nuevoReporte === "ATRASADO") {
                     reporteCell.classList.add("atrasado");
+                } else if (nuevoReporte == "EN BODEGA DE ENVÍO"){
+                    reporteCell.classList.add("listo-envio");
                 } else {
                     reporteCell.classList.add("atiempo");
                 }

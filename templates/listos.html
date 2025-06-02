@@ -19,7 +19,17 @@
       padding: 4px 8px;
       text-align: center;
       white-space: nowrap;
+      text-align: center;
       vertical-align: top; /* para que texto quede arriba */
+
+    }
+    
+    table, th, td {
+        border: 1px solid black; 
+        text-align: center; /* <- Centra el texto horizontalmente */
+        vertical-align: middle; /* Opcional: centra verticalmente */
+    }
+    
     }
     th {
       background-color: #eee;
@@ -88,7 +98,7 @@
 
             <td rowspan="{{ pedido.pares_articulos|length }}">
             <form action="{{ url_for('eliminar', indice=idx) }}" method="post" style="margin:0;">
-                <input type="hidden" name="next_url" value="{{ request.path }}">
+                <input type="hidden" name="next" value="{{ request.path }}">
                 <button type="submit" onclick="return confirm('¿Seguro quieres eliminar este pedido?')">Eliminar Pedido</button>
             </form>
             </td>
